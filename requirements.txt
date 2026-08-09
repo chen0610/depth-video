@@ -1,0 +1,7 @@
+torch>=2.2,<3
+torchvision>=0.17,<1
+transformers>=4.45,<6
+gradio>=5,<7
+imageio-ffmpeg>=0.5,<1
+numpy>=1.26,<3
+Pillow>=10,<13
