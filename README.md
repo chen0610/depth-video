@@ -1,6 +1,14 @@
 # Depth Anything V2 深度视频转换器
 
-一个可作为桌面软件分发的本地应用，逐帧使用 Depth Anything V2 生成灰度相对深度视频。界面由 Gradio 提供，桌面窗口由 pywebview 承载，支持 MP4 / MOV 输入，并输出浏览器可播放的 H.264 MP4。
+[![Latest Release](https://img.shields.io/github/v/release/chen0610/depth-video?display_name=tag&sort=semver)](https://github.com/chen0610/depth-video/releases/latest)
+[![Windows](https://img.shields.io/badge/Windows-10%20%2F%2011-0078D4)](https://github.com/chen0610/depth-video/releases/latest)
+[![Python](https://img.shields.io/badge/Python-3.10--3.12-3776AB)](https://www.python.org/)
+
+一个本地运行的 Depth Anything V2 深度视频转换器。应用逐帧生成灰度相对深度视频，支持 MP4 / MOV、CUDA / MPS 自动加速、时间平滑、音频保留和 H.264 MP4 导出。
+
+[下载最新桌面版](https://github.com/chen0610/depth-video/releases/latest) · [查看源码安装](#源码运行环境) · [联系开发者](mailto:longway1021@gmail.com)
+
+![Depth Video 桌面界面：原始视频与灰度深度结果对照](docs/images/depth-video-preview.png)
 
 ## 功能
 
@@ -13,17 +21,29 @@
 - 可选保留原始音频，转码为 AAC
 - `imageio-ffmpeg` 随 Python wheel 提供 ffmpeg，普通安装无需单独配置 ffmpeg
 
-## 桌面版直接使用
+## 下载桌面版
 
-Windows 分发包位于 `dist/DepthVideo/`。完整复制或解压该目录后，双击：
+### Windows 10 / 11 x64
 
-```text
-DepthVideo.exe
-```
+前往 [最新 Release](https://github.com/chen0610/depth-video/releases/latest)，下载下面三个文件并放在同一目录：
 
-桌面包已经包含 Python、PyTorch、Gradio、ffmpeg、WebView 宿主和 Small 模型，终端用户不需要安装 Python、CUDA Toolkit 或运行安装命令。Windows 构建同时支持 NVIDIA CUDA 和 CPU 回退；当前 CUDA 构建约 4.3 GB，主要空间来自 PyTorch CUDA 与 cuDNN 动态库。
+1. [`DepthVideo-Windows-x64.zip.001`](https://github.com/chen0610/depth-video/releases/latest/download/DepthVideo-Windows-x64.zip.001)
+2. [`DepthVideo-Windows-x64.zip.002`](https://github.com/chen0610/depth-video/releases/latest/download/DepthVideo-Windows-x64.zip.002)
+3. [`Assemble-DepthVideo-Windows.cmd`](https://github.com/chen0610/depth-video/releases/latest/download/Assemble-DepthVideo-Windows.cmd)
+
+双击 `Assemble-DepthVideo-Windows.cmd`。脚本会合并分卷并自动校验 SHA-256，得到 `DepthVideo-Windows-x64.zip`。解压后进入 `DepthVideo` 目录，双击 `DepthVideo.exe` 即可启动。
+
+Windows 便携包已包含 Python、CUDA 版 PyTorch、Gradio、ffmpeg、WebView 宿主和 Small 模型，不需要安装 Python 或 CUDA Toolkit。支持 NVIDIA CUDA 自动加速；CUDA 不可用时自动回退到 CPU。压缩包约 2.88 GB，解压后约 4.3 GB，主要空间来自 PyTorch CUDA 与 cuDNN 动态库。
+
+GitHub 要求每个 Release 附件小于 2 GiB，因此 Windows 包必须分成两个附件；Release 的总附件大小没有这一限制。详见 [GitHub 官方说明](https://docs.github.com/en/repositories/releasing-projects-on-github/about-releases#storage-and-bandwidth-quotas)。
+
+当前 Windows 版本未进行代码签名，SmartScreen 可能显示“Windows 已保护你的电脑”。请先确认文件来自本仓库的 Release，并通过合并脚本的 SHA-256 校验，再决定是否运行。
 
 默认构建内置 Small 权重，可离线开始转换。Base 和 Large 权重不内置，首次选择时仍需联网下载。
+
+### macOS
+
+当前 Release 暂未提供预编译的 macOS `.app`。macOS 用户可按下方命令从源码运行，或在自己的 Mac 上执行 `build_macos.sh` 构建。公开分发的 macOS 应用仍需要开发者证书签名和 Apple notarization，不能在 Windows 上可靠生成。
 
 桌面版的模型与日志保存在用户数据目录：
 
@@ -35,6 +55,8 @@ Windows 10/11 通常已安装 Microsoft Edge WebView2 Runtime。若精简系统�
 ## 构建桌面版
 
 PyInstaller 不是跨平台编译器。Windows 应用必须在 Windows 构建，macOS `.app` 必须在 macOS 构建。
+
+`dist/` 是开发者本地构建目录，已通过 `.gitignore` 排除，不会出现在克隆后的仓库中。面向用户的可下载二进制统一发布在 [GitHub Releases](https://github.com/chen0610/depth-video/releases)。
 
 Windows PowerShell：
 
