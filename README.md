@@ -25,19 +25,20 @@
 
 ### Windows 10 / 11 x64
 
-前往 [最新 Release](https://github.com/chen0610/depth-video/releases/latest)，下载下面三个文件并放在同一目录：
+前往 [最新 Release](https://github.com/chen0610/depth-video/releases/latest)，下载：
 
-1. [`DepthVideo-Windows-x64.zip.001`](https://github.com/chen0610/depth-video/releases/latest/download/DepthVideo-Windows-x64.zip.001)
-2. [`DepthVideo-Windows-x64.zip.002`](https://github.com/chen0610/depth-video/releases/latest/download/DepthVideo-Windows-x64.zip.002)
-3. [`Assemble-DepthVideo-Windows.cmd`](https://github.com/chen0610/depth-video/releases/latest/download/Assemble-DepthVideo-Windows.cmd)
+- [`DepthVideo-Windows-x64-CPU.zip`](https://github.com/chen0610/depth-video/releases/latest/download/DepthVideo-Windows-x64-CPU.zip)
+- [`DepthVideo-v1.0.0-SHA256SUMS.txt`](https://github.com/chen0610/depth-video/releases/latest/download/DepthVideo-v1.0.0-SHA256SUMS.txt)（可选校验）
 
-双击 `Assemble-DepthVideo-Windows.cmd`。脚本会合并分卷并自动校验 SHA-256，得到 `DepthVideo-Windows-x64.zip`。解压后进入 `DepthVideo` 目录，双击 `DepthVideo.exe` 即可启动。
+解压 ZIP，进入 `DepthVideo` 目录并双击 `DepthVideo.exe`。便携包已包含 Python、CPU 版 PyTorch、Gradio、ffmpeg、WebView 宿主和 Small 模型，不需要配置 Python 环境。
 
-Windows 便携包已包含 Python、CUDA 版 PyTorch、Gradio、ffmpeg、WebView 宿主和 Small 模型，不需要安装 Python 或 CUDA Toolkit。支持 NVIDIA CUDA 自动加速；CUDA 不可用时自动回退到 CPU。压缩包约 2.88 GB，解压后约 4.3 GB，主要空间来自 PyTorch CUDA 与 cuDNN 动态库。
+为控制下载体积，官方便携包不内置 NVIDIA CUDA 运行库，只使用 CPU。需要 GPU 加速时，请按 [Windows NVIDIA CUDA](#windows-nvidia-cuda) 从源码运行，或自行构建 CUDA 桌面包。
 
-GitHub 要求每个 Release 附件小于 2 GiB，因此 Windows 包必须分成两个附件；Release 的总附件大小没有这一限制。详见 [GitHub 官方说明](https://docs.github.com/en/repositories/releasing-projects-on-github/about-releases#storage-and-bandwidth-quotas)。
+当前 Windows 版本未进行代码签名，SmartScreen 可能显示“Windows 已保护你的电脑”。请先确认文件来自本仓库的 Release，并将以下命令的结果与 `DepthVideo-v1.0.0-SHA256SUMS.txt` 对照，再决定是否运行：
 
-当前 Windows 版本未进行代码签名，SmartScreen 可能显示“Windows 已保护你的电脑”。请先确认文件来自本仓库的 Release，并通过合并脚本的 SHA-256 校验，再决定是否运行。
+```powershell
+Get-FileHash .\DepthVideo-Windows-x64-CPU.zip -Algorithm SHA256
+```
 
 默认构建内置 Small 权重，可离线开始转换。Base 和 Large 权重不内置，首次选择时仍需联网下载。
 
@@ -62,10 +63,18 @@ Windows PowerShell：
 
 ```powershell
 Set-ExecutionPolicy -Scope Process Bypass
-.\build_windows.ps1
+.\build_windows.ps1 -Zip
 ```
 
-默认会安装 `requirements-desktop.txt`、生成图标、准备 Small 模型并输出 `dist\DepthVideo\DepthVideo.exe`。已有依赖时可使用 `-SkipInstall`；不内置 Small 模型时使用 `-WithoutBundledSmallModel`；需要便携压缩包时追加 `-Zip`。
+默认安装 CPU 版 PyTorch、生成图标、准备 Small 模型，并输出 `dist\CPU\DepthVideo\DepthVideo.exe` 和 `dist\DepthVideo-Windows-x64-CPU.zip`。CPU / CUDA 变体使用隔离目录，不会互相覆盖；`dist/` 仍只存在于构建机本地。
+
+自行构建 CUDA 12.6 桌面包：
+
+```powershell
+.\build_windows.ps1 -TorchVariant cu126 -Zip
+```
+
+CUDA 13.0 使用 `-TorchVariant cu130`。已有依赖时可使用 `-SkipInstall`，但该选项不会检查或替换当前 PyTorch 变体；不内置 Small 模型时使用 `-WithoutBundledSmallModel`。
 
 macOS：
 
@@ -83,9 +92,17 @@ chmod +x build_macos.sh
 - 首次选择模型时需联网下载 Hugging Face 权重，缓存位于项目的 `.cache/huggingface`
 - 磁盘空间取决于模型：Small 约 100 MB，Base 约 400 MB，Large 约 1.4 GB
 
-## Windows 安装
+## Windows NVIDIA CUDA
 
-在 PowerShell 中进入项目目录：
+官方 Windows 便携包是固定的 CPU 构建，不能通过单独安装 CUDA Toolkit 原地切换为 GPU。PyInstaller 已将 CPU 版 PyTorch 冻结进应用；GPU 模式必须使用包含 CUDA 的 PyTorch wheel 从源码运行，或按上一节自行打包。
+
+1. 安装或更新 [NVIDIA 显卡驱动](https://www.nvidia.com/Download/index.aspx)，然后确认 PowerShell 能识别显卡：
+
+```powershell
+nvidia-smi
+```
+
+2. 在项目目录创建独立环境：
 
 ```powershell
 py -3.11 -m venv .venv
@@ -94,30 +111,40 @@ Set-ExecutionPolicy -Scope Process Bypass
 python -m pip install --upgrade pip
 ```
 
-NVIDIA 驱动 525 - 579（CUDA 12.6 wheel）：
+3. 安装 CUDA 版 PyTorch。项目当前验证过 CUDA 12.6 wheel：
 
 ```powershell
 python -m pip install torch torchvision --index-url https://download.pytorch.org/whl/cu126
 python -m pip install -r requirements.txt
 ```
 
-NVIDIA 驱动 580 或更高（CUDA 13.0 wheel）：
+也可在 [PyTorch 官方安装选择器](https://pytorch.org/get-started/locally/)中按当前驱动选择受支持的 CUDA wheel。若明确使用 CUDA 13.0：
 
 ```powershell
 python -m pip install torch torchvision --index-url https://download.pytorch.org/whl/cu130
 python -m pip install -r requirements.txt
 ```
 
-仅 CPU：
+4. 验证 GPU 并启动：
 
 ```powershell
-python -m pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
-python -m pip install -r requirements.txt
+python -c "import torch; print(torch.cuda.is_available(), torch.version.cuda); print(torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'CPU')"
+python app.py --inbrowser
 ```
 
-启动：
+PyTorch wheel 已包含所需 CUDA 运行库，通常不需要单独安装完整 CUDA Toolkit；仍然必须有兼容的 NVIDIA 驱动。若验证结果是 `False`，不要继续打包 CUDA 版，先处理驱动或 wheel 不匹配问题。
+
+## Windows CPU 源码安装
+
+没有 NVIDIA GPU 时：
 
 ```powershell
+py -3.11 -m venv .venv
+Set-ExecutionPolicy -Scope Process Bypass
+.\.venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
+python -m pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
+python -m pip install -r requirements.txt
 python app.py --inbrowser
 ```
 
@@ -154,7 +181,7 @@ macOS MPS：
 python -c "import torch; print(torch.backends.mps.is_available())"
 ```
 
-界面底部的“状态”会显示实际选中的设备。应用不自行安装 CUDA；是否能启用 CUDA 取决于 NVIDIA 驱动和当前虚拟环境中的 PyTorch wheel。
+界面底部的“状态”会显示实际选中的设备。应用不自行安装 CUDA；是否能启用 CUDA 取决于 NVIDIA 驱动和当前虚拟环境中的 PyTorch wheel。完整 CUDA Toolkit 不是 PyTorch 预编译 wheel 的必要条件。
 
 ## 使用
 

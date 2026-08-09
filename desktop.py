@@ -5,13 +5,18 @@ import multiprocessing
 import os
 import platform
 import sys
+import time
 import traceback
 from pathlib import Path
+from urllib.error import URLError
+from urllib.parse import urljoin
+from urllib.request import ProxyHandler, build_opener
 
 APP_TITLE = "Depth Anything V2 深度视频转换器"
 WINDOW_WIDTH = 1440
 WINDOW_HEIGHT = 960
 MIN_WINDOW_SIZE = (940, 700)
+STARTUP_RECOVERY_TIMEOUT_SECONDS = 20.0
 
 
 def desktop_log_path() -> Path:
@@ -62,6 +67,27 @@ def show_fatal_error(message: str) -> None:
     print(message, file=sys.stderr)
 
 
+def wait_for_gradio_startup(local_url: str, timeout: float) -> None:
+    startup_url = urljoin(local_url, "gradio_api/startup-events")
+    opener = build_opener(ProxyHandler({}))
+    deadline = time.monotonic() + timeout
+    last_error = "no response"
+
+    while time.monotonic() < deadline:
+        try:
+            with opener.open(startup_url, timeout=2.0) as response:
+                if 200 <= response.status < 300:
+                    return
+                last_error = f"HTTP {response.status}"
+        except (OSError, URLError) as exc:
+            last_error = str(exc)
+        time.sleep(0.25)
+
+    raise RuntimeError(
+        f"Gradio did not become ready within {timeout:.0f}s: {last_error}"
+    )
+
+
 def main() -> None:
     logger = configure_logging()
     demo = None
@@ -73,13 +99,24 @@ def main() -> None:
         logger.info("Desktop dependencies imported")
         demo = build_interface()
         logger.info("Gradio interface built")
-        _, local_url, _ = launch_interface(
-            demo,
-            server_name="127.0.0.1",
-            server_port=None,
-            prevent_thread_lock=True,
-            quiet=True,
-        )
+        try:
+            _, local_url, _ = launch_interface(
+                demo,
+                server_name="127.0.0.1",
+                server_port=None,
+                prevent_thread_lock=True,
+                quiet=True,
+            )
+        except Exception as launch_error:
+            local_url = getattr(demo, "local_url", None)
+            if "startup-events" not in str(launch_error) or not local_url:
+                raise
+            logger.warning(
+                "Initial Gradio readiness check failed; waiting for %s",
+                local_url,
+            )
+            wait_for_gradio_startup(local_url, STARTUP_RECOVERY_TIMEOUT_SECONDS)
+            logger.info("Gradio became ready after the initial readiness failure")
         logger.info("Local server ready at %s", local_url)
 
         webview.create_window(
